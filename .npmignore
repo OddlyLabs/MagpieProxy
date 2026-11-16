@@ -1,0 +1,15 @@
+node_modules/
+test-results/
+playwright-report/
+*.bak-*
+*.tmp
+page/data.js
+.env
+.env.*
+*.log
+*.pid
+installation.json
+diagnostics.txt
+*.staging-*
+*.previous-*
+*.failed-*

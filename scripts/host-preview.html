@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>出口管家 · 宿主导航补丁预览</title>
+  <link rel="icon" href="/icon.svg">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/host/navigation.css">
+  <link rel="stylesheet" href="/host/menus.css">
+  <link rel="stylesheet" href="/host-preview.css">
+  <script src="/icons.js"></script>
+  <script src="/host-preview.js" defer></script>
+  <script src="/host/navigation.js" defer></script>
+  <script src="/host/menus.js" defer></script>
+  <script src="/host/pluginpages.js" defer></script>
+</head>
+<body class="side-nav">
+  <aside class="demo-sidebar" aria-label="magpie 侧栏">
+    <div class="demo-brand"><img src="/icon.svg" width="22" height="22" alt=""><strong>magpie</strong></div>
+    <nav id="nav" aria-label="主导航">
+      <span class="nav-gl">观测</span>
+      <button type="button" data-view="usage"><span>用量</span></button>
+    </nav>
+    <p class="demo-foot">宿主导航补丁预览<br>原版侧栏代码 · 虚构数据</p>
+  </aside>
+  <main id="preview-main" class="demo-main">
+    <section id="view-usage" hidden><h1>用量</h1><div id="usageTab"><button class="on" data-seg="usage">概览</button><button data-seg="requests">请求</button><button data-seg="sessions">会话</button></div><p>此处用于验证切换到原生页面时，插件子菜单正常收起。</p></section>
+    <section id="view-plugins" hidden><h1>插件</h1></section>
+  </main>
+</body>
+</html>

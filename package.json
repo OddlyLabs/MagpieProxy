@@ -1,0 +1,124 @@
+{
+  "name": "magpie-zcode-egress",
+  "version": "1.1.0",
+  "description": "MagpieProxy（出口管家）：magpie 插件，通过官方插件页面或本机浏览器，为供应商账号和 API Key 管理独立代理出口、单 Key 多出口、节点来源、健康检查及 ZCode 自动领取。支持 Windows、macOS 和 Linux。",
+  "homepage": "https://github.com/OddlyLabs/MagpieProxy#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OddlyLabs/MagpieProxy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/OddlyLabs/MagpieProxy/issues"
+  },
+  "type": "module",
+  "main": "./index.mjs",
+  "scripts": {
+    "dev": "node scripts/preview.mjs",
+    "icons": "node scripts/build-icons.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node scripts/test.mjs",
+    "test:ui": "playwright test",
+    "doctor": "node manage.mjs doctor",
+    "open": "node manage.mjs open",
+    "release": "node scripts/release.mjs"
+  },
+  "files": [
+    "index.mjs",
+    "server.mjs",
+    "egress-cli.mjs",
+    "lib/*.mjs",
+    "vendor",
+    "page/index.html",
+    "page/app.js",
+    "page/icons.js",
+    "page/model.js",
+    "page/style.css",
+    "page/icon.svg",
+    "README.md",
+    "CHANGELOG.md",
+    "page/navigation.js",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "docs",
+    "page/entry.html",
+    "page/entry.js",
+    "page/entry.css",
+    "page/launcher.html",
+    "page/service-bridge.js",
+    "manage.mjs",
+    "Install.cmd",
+    "Open.cmd",
+    "Diagnose.cmd",
+    "install.ps1",
+    "open.sh",
+    "install.sh",
+    "QUICKSTART.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "magpie",
+    "magpieproxy",
+    "egress-manager",
+    "zcode",
+    "mihomo",
+    "egress",
+    "proxy",
+    "claim"
+  ],
+  "license": "MIT",
+  "magpie": {
+    "icon": "data:image/svg+xml;base64,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjcyLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS13YXlwb2ludHMiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iIzZiNjg3YiIKICBzdHJva2Utd2lkdGg9IjEuNzUiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8c3R5bGU+QG1lZGlhKHByZWZlcnMtY29sb3Itc2NoZW1lOmRhcmspe3N2Z3tzdHJva2U6I2I3YjFjYn19PC9zdHlsZT4KICA8cGF0aCBkPSJtMTAuNTg2IDUuNDE0LTUuMTcyIDUuMTcyIiAvPgogIDxwYXRoIGQ9Im0xOC41ODYgMTMuNDE0LTUuMTcyIDUuMTcyIiAvPgogIDxwYXRoIGQ9Ik02IDEyaDEyIiAvPgogIDxjaXJjbGUgY3g9IjEyIiBjeT0iMjAiIHI9IjIiIC8+CiAgPGNpcmNsZSBjeD0iMTIiIGN5PSI0IiByPSIyIiAvPgogIDxjaXJjbGUgY3g9IjIwIiBjeT0iMTIiIHI9IjIiIC8+CiAgPGNpcmNsZSBjeD0iNCIgY3k9IjEyIiByPSIyIiAvPgo8L3N2Zz4K",
+    "name": "MagpieProxy · 出口管家",
+    "summary": {
+      "zh": "统一出口管家：mihomo 一号一出口，白名单供应商的账号/Key 一键批量分配并固定绑定出口（IP 全局去重、健康检查、故障自动换备用），订阅导入，热加载写入 magpie 不停机；开放 /api/v1 供第三方插件查询/设置绑定；附带 ZCode 每晚自动领取。",
+      "en": "Unified egress manager for magpie providers: per-account mihomo socks5 ports, one-click fixed binding with global exit-IP dedup, health checks with spare failover, subscription import, hot reload without restart; stable /api/v1 for third-party plugins; nightly ZCode auto-claim."
+    },
+    "page": {
+      "title": "出口管家",
+      "titles": {
+        "zh": "出口管家",
+        "zh-TW": "出口管家",
+        "en": "Egress Manager"
+      },
+      "file": "page/entry.html",
+      "icon": "page/icon.svg",
+      "service": {
+        "port": 3468,
+        "option": "port"
+      },
+      "keepAlive": true
+    },
+    "options": {
+      "port": 3468
+    },
+    "actions": [
+      {
+        "id": "open-egress",
+        "menu": "provider",
+        "title": "打开出口管家",
+        "titles": {
+          "zh": "打开出口管家",
+          "zh-TW": "開啟出口管家",
+          "en": "Open Egress Manager"
+        }
+      }
+    ],
+    "panels": [
+      {
+        "slot": "settings",
+        "title": "出口管家",
+        "titles": {
+          "zh": "出口管家",
+          "en": "Egress Manager"
+        },
+        "file": "page/launcher.html"
+      }
+    ]
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "axe-core": "^4.14.0"
+  }
+}

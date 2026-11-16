@@ -1,0 +1,27 @@
+node_modules/
+playwright-report/
+test-results/
+*.tgz
+*.bak-*
+*.tmp
+page/data.js
+/.env
+/.env.*
+!/.env.example
+/dist/
+/releases/
+/data/
+/egress/
+*.zip
+*.tar.gz
+*.log
+*.pid
+installation.json
+diagnostics.txt
+*.staging-*
+*.previous-*
+*.failed-*
+
+# Local state written by other tools
+.mimosa/
+.claude/settings.local.json

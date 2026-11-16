@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="集中管理供应商账号的出口、节点来源与健康状态。">
+  <title>出口管家</title>
+  <link rel="icon" href="icon.svg?v=1.1.0" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css?v=1.1.0">
+  <script src="_magpie/bridge.js"></script>
+  <script src="data.js"></script>
+  <script src="icons.js?v=1.1.0" defer></script>
+  <script src="model.js?v=1.1.0" defer></script>
+  <script src="navigation.js?v=1.1.0" defer></script>
+  <script src="app.js?v=1.1.0" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">跳到主要内容</a>
+  <div class="app-shell">
+    <header class="top">
+      <nav class="breadcrumb" aria-label="当前位置">
+        <button type="button" class="button quiet icon-button" id="provider-nav-toggle" aria-label="展开供应商导航" aria-expanded="false" aria-controls="provider-sidebar" hidden></button>
+        <span class="brand"><img src="icon.svg?v=1.1.0" width="20" height="20" alt=""><h1>出口管家</h1></span>
+        <span class="breadcrumb-separator" aria-hidden="true">/</span><strong id="breadcrumb-current">出口分配</strong>
+      </nav>
+      <div class="top-tools">
+        <span class="connection" id="connection" role="status"><i></i><span>正在连接</span></span>
+        <button type="button" class="button quiet" data-act="settings" id="settings-button">设置</button>
+      </div>
+    </header>
+    <div id="preview-banner" class="preview-banner" hidden>演示预览 · 示例数据，操作不会改变真实配置</div>
+    <div class="workspace-toolbar">
+    <nav class="tabs" role="tablist" aria-label="工作台分区">
+      <button type="button" class="tab" role="tab" id="tab-egress" data-tab="egress" aria-selected="true" aria-controls="root">出口分配 <span id="count-egress"></span></button>
+      <button type="button" class="tab" role="tab" id="tab-sources" data-tab="sources" aria-selected="false" aria-controls="root" tabindex="-1">节点来源 <span id="count-sources"></span></button>
+      <button type="button" class="tab" role="tab" id="tab-claims" data-tab="claims" aria-selected="false" aria-controls="root" tabindex="-1">自动领取 <span id="count-claims"></span></button>
+    </nav>
+      <div class="heading-actions">
+        <button type="button" class="button secondary" data-act="check" data-mutation>立即体检</button>
+        <button type="button" class="button primary" data-act="assign" id="assign-button" data-mutation>分配出口</button>
+      </div>
+    </div>
+    <p id="subline" class="scope-caption">正在读取账号与出口状态…</p>
+    <div id="overview" class="overview" aria-label="出口概览"></div>
+    <div id="stale-notice" class="notice warn" role="status" hidden><span></span><button type="button" class="button secondary small" data-act="refresh">重新读取</button></div>
+    <div id="notice" class="notice" hidden></div>
+    <div id="task-banner" class="task-banner" role="status" aria-live="polite" hidden></div>
+    <div class="workspace-body">
+      <aside id="provider-sidebar" class="provider-sidebar" aria-label="供应商快捷导航" hidden></aside>
+      <main id="content">
+        <div id="root" role="tabpanel" aria-labelledby="tab-egress" tabindex="-1"><div class="loading-state"><span class="spinner"></span>正在读取工作台…</div></div>
+      </main>
+    </div>
+    <footer>
+      <span class="footer-note"><i></i>独立出口 · 自动体检 · 故障切换</span>
+      <div><span id="foot-mut">等待数据</span><button type="button" class="button quiet small" data-act="refresh">刷新</button></div>
+    </footer>
+  </div>
+  <div id="modal" class="modal" hidden><div class="dialog" role="dialog" aria-modal="true" tabindex="-1"></div></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <noscript><p class="noscript">请启用 JavaScript 以使用出口管家。</p></noscript>
+</body>
+</html>

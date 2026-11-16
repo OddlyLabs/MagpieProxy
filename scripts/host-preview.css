@@ -1,0 +1,28 @@
+/* The surrounding demo shell. Submenu styles and behavior come from the host fixture. */
+:root { --ctl-fg: var(--fg-2); --ease: ease; --ease-out: cubic-bezier(.32,.72,0,1); --pop-bg: var(--card); --pill: var(--soft); }
+body { margin: 0; }
+[hidden] { display: none !important; }
+.demo-sidebar { position: fixed; inset: 0 auto 0 0; width: 240px; padding: 18px 12px; border-right: 1px solid var(--line); display: flex; flex-direction: column; background: var(--bg); }
+.demo-brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 18px; font-size: 17px; }
+#nav { display: flex; flex-direction: column; gap: 2px; overflow: auto; padding: 0; flex: 1; }
+#nav > .nav-gl { padding: 14px 10px 5px; font-size: 12px; color: var(--muted); }
+#nav button { border: 0; background: transparent; font-family: inherit; cursor: pointer; }
+#nav > button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 8px 10px; border-radius: 7px; font-size: 14px; text-align: left; color: var(--fg-2); }
+#nav > button.on { background: var(--card); color: var(--fg); box-shadow: 0 0 0 1px var(--line); }
+#nav > button .nav-ic { width: 16px; height: 16px; flex: none; }
+#nav button:hover { background: var(--hover); }
+#nav .nav-sub > button { background: transparent; }
+.demo-foot { margin-top: auto; padding: 20px 10px 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
+.demo-main { position: fixed; inset: 0 0 0 240px; min-width: 0; padding: 0; }
+.demo-main > section { height: 100%; overflow: auto; }
+.demo-main > section:not(.plugin-page) { padding: 28px; }
+.plugin-frame { width: 100%; height: 100%; border: 0; display: block; }
+#usageTab { display: flex; gap: 8px; margin-block: 16px; }
+#usageTab button { padding: 8px 15px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); }
+@media (max-width: 800px) { .demo-sidebar { width: 190px; padding-inline: 8px; }.demo-main { left: 190px; } }
+body:not(.side-nav) .demo-sidebar { inset: 0 0 auto; width: auto; height: 64px; flex-direction: row; gap: 24px; padding: 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+body:not(.side-nav) .demo-brand { padding: 0 10px; }
+body:not(.side-nav) #nav { flex-direction: row; align-items: center; }
+body:not(.side-nav) #nav > button { width: auto; }
+body:not(.side-nav) #nav > .nav-gl, body:not(.side-nav) .demo-foot { display: none; }
+body:not(.side-nav) .demo-main { inset: 64px 0 0; }
