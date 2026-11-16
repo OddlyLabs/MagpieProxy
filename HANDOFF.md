@@ -26,9 +26,9 @@
 | `npm run test:ui`（Chromium） | 47 / 47，使用本机 Chrome。 |
 | 按目录添加，magpie v0.1.4324，隔离环境 | 通过：页面、设置面板、7 个工具都列出，没有加载错误。 |
 | 从 GitHub 添加，隔离环境 | 通过，见 [docs/VALIDATION.md](docs/VALIDATION.md)。 |
-| GitHub Actions「Plugin checks」 | 首次推送后才第一次运行，结果看仓库的 Actions 页。 |
+| GitHub Actions「Plugin checks」 | 首次推送通过：Windows / macOS / Ubuntu 的 Node.js 22 检查与测试，Ubuntu 上的 Chromium 和 WebKit 界面回归。 |
 
-没有验证的：WebKit、macOS / Linux 实机、改动后的 Windows 安装包重新安装、真实账号的领取和分配。
+没有验证的：macOS / Linux 桌面实机（只有 CI）、改动后的 Windows 安装包重新安装、真实账号的领取和分配。
 
 ## 已知问题和待办
 
@@ -37,7 +37,6 @@
 - **插件停用或移除后，后台和出口进程继续运行**，账号上的代理地址也保留。没有卸载钩子。README 提示用户先解绑。
 - `server.mjs` 仍然把快照写进插件目录的 `page/data.js`，供旧沙箱面板使用。从 git 添加时这个目录在 magpie 的 `plugins/node_modules` 下，更新时会被覆盖，不影响主工作台。
 - 没有发布到 npm。发布后可以用 `magpie plugin add magpie-zcode-egress`。
-- CI 第一次运行如果失败，先修 CI：`main` 必须保持可用。
 
 ## 没有决定的事
 

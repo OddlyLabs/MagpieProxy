@@ -8,9 +8,10 @@
 | 核心单元与集成测试 | 130 / 130 项通过。 |
 | Chromium 界面回归 | 47 / 47 项通过（本机 Chrome），包含首屏无数据时不显示供应商导航的新用例。 |
 | 按目录添加 | 从 git 暂存区导出的干净副本，`magpie plugin add <目录>` 成功；magpie 列出页面、设置面板和 7 个工具，没有加载错误；后台在指定端口启动。 |
-| 从 GitHub 添加 | 见 [HANDOFF.md](../HANDOFF.md) 的验证表，发布后填写。 |
+| 从 GitHub 添加 | 隔离环境中 `magpie plugin add github:OddlyLabs/MagpieProxy` 成功，列为 `magpie-zcode-egress 1.1.0`，页面、设置面板和 7 个工具都在，没有加载错误。 |
+| GitHub Actions | 首次推送通过：Windows / macOS / Ubuntu 的检查与测试，Ubuntu 上的 Chromium 和 WebKit 界面回归。 |
 
-本轮没有验证：WebKit 界面回归、macOS 和 Linux 实机、Windows 安装包在本次改动后的重新安装、真实账号的领取与分配。GitHub Actions 的结果以仓库的 Actions 页为准。
+本轮没有验证：macOS 和 Linux 桌面实机（只有 CI）、Windows 安装包在本次改动后的重新安装、真实账号的领取与分配。
 
 # 1.0.0 验证记录
 
