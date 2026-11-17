@@ -104,7 +104,7 @@ export const ZcodeEgressPlugin = async (input, options = {}) => {
           properties: {
             provider: { type: "string" },
             account: { type: "string", description: "登录账号（邮箱）或 Key 的 sha256 前 10 位；需已绑定出口" },
-            count: { type: "number", description: "出口总数，1–8；1 = 改回单出口" },
+            count: { type: "number", description: "出口总数，1 到设置里的上限（默认 8，最高 64）；1 = 改回单出口" },
             strategy: { type: "string", enum: ["round-robin", "sticky-sessions", "consistent-hashing"], description: "分流策略：round-robin 每条新连接轮换（默认）；sticky-sessions 同一目标一段时间内固定；consistent-hashing 同一目标始终固定" },
           },
           required: ["provider", "account", "count"],

@@ -12,6 +12,7 @@
 ## 最近完成的工作
 
 1. 单 Key 多出口（1.1.0 主功能）及可靠性改进，见 [CHANGELOG.md](CHANGELOG.md)。
+   1.1.0 之后（CHANGELOG 的「未发布」）：出口上限可设置（`maxExits`，默认 8，最高 64）、账号行上的「多出口」入口、一批性能和健壮性改进、工作台界面改版（单行标题栏、出口健康条，README 截图已更新）。**还没有改版本号、打标签和发 Release。**
 2. 改名 MagpieProxy：README、QUICKSTART、发布文件名、`package.json` 的仓库地址和展示名。包名、数据目录、环境变量没有改。
 3. `doctor` 能识别从 git 或 npm 添加的副本（`lib/platform.mjs` 的 `findRegistration`）。
 4. 发布包里脚本的可执行位按文件内容（`#!` 开头）确定；git 里三个脚本的模式是 100755。
@@ -22,8 +23,8 @@
 | 项目 | 结果 |
 | --- | --- |
 | `npm run check` | 73 / 73，Windows 11，Node.js 24.18.0。 |
-| `npm test` | 130 / 130。 |
-| `npm run test:ui`（Chromium） | 47 / 47，使用本机 Chrome。 |
+| `npm test` | 132 / 132。 |
+| `npm run test:ui`（Chromium） | 49 / 49，使用本机 Chrome。 |
 | 按目录添加，magpie v0.1.4324，隔离环境 | 通过：页面、设置面板、7 个工具都列出，没有加载错误。 |
 | 从 GitHub 添加，隔离环境 | 通过，见 [docs/VALIDATION.md](docs/VALIDATION.md)。 |
 | GitHub Actions「Plugin checks」 | 首次推送通过：Windows / macOS / Ubuntu 的 Node.js 22 检查与测试，Ubuntu 上的 Chromium 和 WebKit 界面回归。 |
@@ -31,6 +32,9 @@
 没有验证的：macOS / Linux 桌面实机（只有 CI）、改动后的 Windows 安装包重新安装、真实账号的领取和分配。
 
 ## 已知问题和待办
+
+- **审查中确认但还没改的性能点。** 面板打开时每 5 秒重建一次约 1 MB 的快照（节点列表每次重新计算、整份发给页面）；可以给快照加版本号，未变化时不下发，并把 `nodes` 挪到已有的 `/api/nodes`。出口数量很大（上千个端口）时一轮体检仍然偏慢。
+- **内核无响应时可能被重复拉起**（`lib/mihomo.mjs` 的启动判断只看 `/version` 是否在 1.5–2.5 秒内应答），旧进程会成为孤儿。启动前应先看 pid 文件里的进程是否还活着。
 
 - **两种安装方式会并存。** `install.ps1` 只检查按目录注册的旧副本，不知道从 git 添加的副本；两种都装会出现两个「出口管家」。README 让用户只选一种。可以让安装器也检查 `plugins/package.json` 里的依赖。
 - **3468 端口被别的程序占用时，从 git 添加的插件加载失败**，要在插件选项里设置 `port`。`index.mjs` 的 `exposeService` 可以改成自动顺延。

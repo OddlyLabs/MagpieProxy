@@ -15,7 +15,7 @@ sidecar 默认监听 `http://127.0.0.1:3468`。实际端口见插件数据目录
 | POST | `/api/v1/assign` | `{ "provider": "可选供应商 ID", "id": "可选请求 ID" }`；省略 `provider` 时处理全部受管供应商。 |
 | POST | `/api/v1/bind` | `{ "provider": "供应商 ID", "account": "账号标识", "node": "可选节点名", "id": "可选请求 ID" }`；省略 `node` 时自动选择空闲出口。 |
 | POST | `/api/v1/unbind` | `{ "provider": "供应商 ID", "account": "账号标识", "id": "可选请求 ID" }`；多出口账号会释放全部出口和入口。 |
-| POST | `/api/v1/exits` | `{ "provider": "供应商 ID", "account": "账号标识", "count": 1–8, "strategy": "可选分流策略", "id": "可选请求 ID" }`；设置该账号的出口数量，见[单 Key 多出口](#单-key-多出口)。 |
+| POST | `/api/v1/exits` | `{ "provider": "供应商 ID", "account": "账号标识", "count": 出口数量, "strategy": "可选分流策略", "id": "可选请求 ID" }`；设置该账号的出口数量，见[单 Key 多出口](#单-key-多出口)。 |
 | GET | `/api/status` | 服务状态、快照、`running` 和当前 `task`。 |
 
 `provider` 是 magpie 中的供应商 ID。登录账号的 `account` 是邮箱；API Key 的 `account` 是 Key 的 SHA-256 前 10 位，可直接使用 `/api/v1/providers` 返回的账号 `id`。
@@ -60,7 +60,7 @@ curl --fail-with-body --max-time 3600 \
   http://127.0.0.1:3468/api/v1/exits
 ```
 
-- `count` 为 1–8 的整数。大于 1 时为账号增加或减少出口，并让 magpie 的代理地址指向本机入口端口；等于 1 时撤掉入口，恢复为主出口的单出口绑定。
+- `count` 为 1 到上限的整数。上限是设置项 `maxExits`（默认 8，范围 2–64）；上限调低后，已超出的账号可以保持或减少出口，不能再增加。大于 1 时为账号增加或减少出口，并让 magpie 的代理地址指向本机入口端口；等于 1 时撤掉入口，恢复为主出口的单出口绑定。
 - `strategy` 可选 `round-robin`（默认，每个新连接轮换）、`consistent-hashing`（同一目标域名固定出口）、`sticky-sessions`（会话保持）。`count` 与当前数量相同而 `strategy` 不同时仅切换策略。
 - 新增出口从备用和空闲节点中选取，出口 IP 不与已有出口重复。候选不足时按实际数量生效，响应 `ok` 为 `true`，`kind` 为 `warn`，`message` 给出实际凑到的数量。
 - 入口连通之后才会修改 magpie 的代理地址；入口不通或内核配置加载失败时回滚到调用前的状态，响应 `ok` 为 `false`。

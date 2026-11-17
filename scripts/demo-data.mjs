@@ -23,7 +23,7 @@ export function demoSnapshot(scenario = "normal") {
   const all = providers.flatMap((p) => p.accounts)
   const snapshot = {
     updated: scenario === "stale" ? now - 360_000 : now, port: 3468, task: null,
-    config: { checkIntervalMin: 10, sparesCount: 8, claimEnabled: true, claimHour: 19, claimMinute: 0, claimIntervalMin: 10, claimWindowHours: 6, autoAssignNew: true, managedProviders: ["zcode", "atlas"], mirror: "", backend: "auto", requestResults: [] },
+    config: { checkIntervalMin: 10, sparesCount: 8, maxExits: 8, claimEnabled: true, claimHour: 19, claimMinute: 0, claimIntervalMin: 10, claimWindowHours: 6, autoAssignNew: true, managedProviders: ["zcode", "atlas"], mirror: "", backend: "auto", requestResults: [] },
     version: { plugin: "0.6.1", app: "3.17.2" },
     onboard: { hasState: true, stateWithGroups: true, accounts: 12, accountsBound: 11, pending: 1, managed: ["zcode", "atlas"], baseDir: "~/.local/share/magpie-zcode-egress/egress" },
     egress: { hasState: true, withGroups: true, lastCheck: now - 180_000, lastZcode: now - 180_000, assignments: Object.fromEntries(all.filter((a) => a.port).map((a) => [a.port, { node: a.node, ip: a.ip }])), spares: nodes.slice(16, 24).map((n, i) => ({ port: 17931 + i, node: n.name, ip: `203.0.113.${i + 31}` })) },

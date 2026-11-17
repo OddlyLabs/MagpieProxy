@@ -15,6 +15,7 @@
 | `spareBase` | `17931` | 备用端口起点；完整备用段必须在 1–65535 内。 |
 | `probePortBase` | `18200` | 独立探测实例的端口起点，范围 1–65280。 |
 | `sparesCount` | `8` | 备用出口数量，范围 2–40。 |
+| `maxExits` | `8` | 单个账号或 API Key 最多可挂的出口数量，范围 2–64。调低后已有的出口保留，只是不能再增加。 |
 | `checkIntervalMin` | `10` | 体检间隔，范围 2–180 分钟。 |
 | `autoAssignNew` | `true` | 体检时为白名单内新发现的未绑定账号分配出口。 |
 | `claimEnabled` | `true` | 是否启用 ZCode 自动领取。 |

@@ -49,7 +49,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -MagpiePath 'D
 
 打开设置选择供应商 → 导入节点订阅或 SOCKS5 地址 → 分配出口。Windows / macOS 使用独立内核，不需要 Docker、curl、gzip 或 flock。自动领取需要 Chrome / Edge；关闭自动领取不影响出口管理。
 
-需要让一个账号或 API Key 同时使用多个出口时，打开账号详情，在「出口数量」中选择 2–8 个并应用。magpie 中仍然只有这一条账号记录，说明见 [README](README.md#单-key-多出口)。
+需要让一个账号或 API Key 同时使用多个出口时，点账号行上的「多出口」按钮，在「出口数量」中填写数量并应用。默认最多 8 个，可在「设置 → 体检与备用」中把上限调到 64。magpie 中仍然只有这一条账号记录，说明见 [README](README.md#单-key-多出口)。
 
 ## 升级
 

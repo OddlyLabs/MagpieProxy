@@ -76,7 +76,11 @@ async function copyText(text, message = "已复制") {
 const ACTION_LABELS = { check: "正在检查出口", assign: "正在分配出口", bind: "正在绑定出口", unbind: "正在解除绑定", swap: "正在切换节点", seed: "正在重新挑选出口", subscribe: "正在更新订阅", "subscription-remove": "正在移除订阅", "pool-import": "正在导入号池", "pool-clear": "正在清空号池", config: "正在保存设置", claims: "正在领取 Token", sync: "正在同步绑定" }
 ACTION_LABELS["probe-nodes"] = "正在测试节点"
 ACTION_LABELS.exits = "正在调整出口数量"
-const MAX_EXITS = 8
+// 单账号出口上限来自设置（maxExits），默认 8，硬上限 64。
+const exitsLimit = (snapshot = getSnapshot()) => {
+  const n = Number(snapshot?.config?.maxExits)
+  return Number.isInteger(n) && n >= 2 ? Math.min(n, 64) : 8
+}
 function finishPending(result) {
   if (pending?.draftKey && result.kind !== "err" && result.ok !== false) drafts.delete(pending.draftKey)
   pending = null; savePending(); clearTimeout(pendingTimer)
@@ -262,6 +266,9 @@ function render(snapshot, force = false) {
     // floating card, so an empty one would cover the tabs.
     $("provider-sidebar").hidden = true; $("provider-nav-toggle").hidden = true
     document.querySelector(".workspace-body").classList.remove("with-sidebar")
+    // Nothing can be checked or assigned yet, and there is no health to summarise.
+    document.querySelector('[data-act="check"]').dataset.unavailable = $("assign-button").dataset.unavailable = "true"
+    $("overview").replaceChildren(); delete $("overview").dataset.key
     $("root").replaceChildren(emptyState("inbox", "等待后台连接", "后台服务尚未提供数据。请稍后刷新，或在 magpie 中重新打开出口管家。", [btn("button secondary", "重新读取", () => refreshData())]))
     syncBusy(); tick(); return
   }
@@ -272,9 +279,10 @@ function render(snapshot, force = false) {
   globalThis.EgressNavigation?.update(navigationModel(snapshot, view))
   document.body.dataset.density = view.density
   $("preview-banner").hidden = !window.__EGRESS_PREVIEW__
-  $("subline").textContent = stats.total ? `${stats.providers.length} 个受管供应商 · ${stats.total} 个账号 · 按账号固定出口` : "导入节点来源，选择要管理的供应商。"
   const focusedProvider = stats.providers.find((p) => p.id === view.provider)
   $("breadcrumb-current").textContent = { egress: focusedProvider?.name || "出口分配", sources: "节点来源", claims: "自动领取" }[view.tab]
+  // The selected tab already names the section; only a focused supplier adds information.
+  $("breadcrumb-current").hidden = !(view.tab === "egress" && focusedProvider)
   renderProviderSidebar(stats)
   const scopeAccounts = view.tab === "egress" && focusedProvider ? focusedProvider.accounts : stats.accounts
   const pendingCount = scopeAccounts.filter((a) => !a.port).length
@@ -306,24 +314,44 @@ function render(snapshot, force = false) {
   }
   renderNotice(snapshot, stats); dialogOnSnapshot?.(snapshot); syncBusy(); tick()
 }
+// One verdict and one cell per account. A cell's shape carries its state, so the
+// strip reads without colour: short and solid is healthy, tall and solid is
+// faulty, tall and hollow is waiting for an exit.
 function renderOverview(snapshot, stats) {
   const overview = $("overview"), sources = snapshot.sources || {}, spares = snapshot.egress?.spares || []
-  const cards = [
-    ["shield", "就绪账号", stats.healthy, `/ ${stats.total}`, "出口与账号状态正常", "green", () => { view.filter = "healthy"; view.query = view.provider = ""; switchTab("egress") }],
-    ["activity", "需要关注", stats.attention, "个", stats.pending ? `${stats.pending} 个待分配 · ${Math.max(0, stats.attention - stats.pending)} 个异常` : stats.attention ? "查看异常并恢复连接" : "所有账号状态良好", stats.attention ? "amber" : "neutral", () => { view.filter = "attention"; view.query = view.provider = ""; switchTab("egress") }],
-    ["cloud", "候选节点", sources.total || 0, "个", `${(snapshot.nodes || []).filter((node) => nodeTestState(node).measured).length} 个已有探测记录 · 查看节点`, "blue", () => pickNodeDialog()],
-    ["stack", "备用出口", spares.length, "个", `目标 ${snapshot.config?.sparesCount ?? 8} 个 · 异常时自动接替`, "violet", () => { switchTab("egress"); $("spares-section")?.scrollIntoView({ behavior: "smooth", block: "center" }) }],
-  ]
-  const key = cards.map((c) => c.slice(0, 6).join("|")).join(";")
+  if (!stats.total) { overview.replaceChildren(); delete overview.dataset.key; return }
+  const cellOf = (account) => { const state = accountState(account); return state.key === "pending" ? "pending" : state.tone }
+  const groups = stats.providers.map((provider) => [provider.name, provider.accounts.map(cellOf)])
+  const measured = (snapshot.nodes || []).filter((node) => nodeTestState(node).measured).length
+  const target = snapshot.config?.sparesCount ?? 8, faulty = Math.max(0, stats.attention - stats.pending)
+  const key = JSON.stringify([groups, sources.total || 0, measured, spares.length, target])
   if (overview.dataset.key === key) return
   overview.dataset.key = key
-  overview.replaceChildren(...cards.map(([glyph, label, value, unit, hint, tone, click]) => {
-    const card = btn("stat-card " + tone, "", click), top = el("span", "stat-top"), glyphWrap = el("span", "stat-icon")
-    glyphWrap.append(icon(glyph, 18)); top.append(el("span", "", label), glyphWrap)
-    const number = el("span", "stat-value", value); number.append(el("small", "", unit))
-    const foot = el("span", "stat-foot", hint); foot.append(icon("arrow", 13))
-    card.append(number, top, foot); return card
-  }))
+  const summary = btn("health-summary " + (stats.attention ? "warn" : "ok"), "", () => { view.filter = stats.attention ? "attention" : "all"; view.query = view.provider = ""; switchTab("egress") }, stats.attention ? "只看需要处理的账号" : "查看全部账号")
+  const copy = el("span", "health-copy")
+  copy.append(
+    el("strong", "", stats.attention ? `${stats.attention} 个账号需要处理` : "出口全部正常"),
+    el("span", "", stats.attention ? [stats.pending && `${stats.pending} 个待分配`, faulty && `${faulty} 个异常`].filter(Boolean).join("，") : `${stats.total} 个账号各用各的出口`))
+  summary.append(icon(stats.attention ? "warn" : "check", 18), copy)
+  const strip = el("div", "port-strip"); strip.setAttribute("aria-hidden", "true")
+  if (stats.total > 96) {
+    // Too many accounts for one cell each: show the proportions instead.
+    strip.classList.add("proportional")
+    for (const [cls, count, label] of [["ok", stats.healthy, "运行正常"], ["bad", faulty, "异常"], ["pending", stats.pending, "待分配"], ["muted", stats.total - stats.healthy - stats.attention, "已停用"]]) {
+      if (count <= 0) continue
+      const cell = el("i", cls); cell.style.flexGrow = String(count); cell.title = `${count} 个${label}`; strip.append(cell)
+    }
+  } else for (const [name, cells] of groups) {
+    const group = el("span", "port-group"); group.title = `${name}：${cells.length} 个账号`
+    for (const cls of cells) group.append(el("i", cls))
+    strip.append(group)
+  }
+  const fact = (label, value, title, click) => { const node = btn("overview-fact", "", click, title); node.append(el("span", "", label), el("strong", "", value)); return node }
+  const facts = el("div", "overview-facts")
+  facts.append(
+    fact("候选节点", String(sources.total || 0), `${measured} 个已有探测记录，点击查看`, () => pickNodeDialog()),
+    fact("备用出口", `${spares.length} / ${target}`, "出口异常时自动接替", () => { switchTab("egress"); $("spares-section")?.scrollIntoView({ behavior: "smooth", block: "center" }) }))
+  overview.replaceChildren(summary, strip, facts)
 }
 function renderNotice(snapshot, stats) {
   const notice = $("notice"), failures = subscriptionsOf(snapshot.sources).filter((s) => s.error)
@@ -428,21 +456,24 @@ function accountRow(account, provider, { card = false } = {}) {
     const node = btn("node-button", "", () => pickNodeDialog({ provider: provider.id, account: account.id, port: account.port, current: account.node, title: account.alias || account.label }))
     node.append(el("span", "region-tag", regionOf(account.node) || "NODE"), el("span", "node-name", account.node), icon("swap", 13))
     node.title = `${account.node} · 点击换绑`; node.setAttribute("aria-label", `为 ${account.alias || account.label} 换绑节点`)
-    node.dataset.focusKey = `node-${provider.id}-${account.id}`; nodeCell.append(node)
+    node.dataset.focusKey = `node-${provider.id}-${account.id}`
+    const nodeLine = el("div", "node-line"); nodeLine.append(node); nodeCell.append(nodeLine)
     const measured = nodeIndex.get(account.node), test = nodeTestState(measured)
     const telemetry = el("span", "node-telemetry", test.measured ? `TLS ${test.latency}${test.stale ? " · 历史" : ""}` : "尚无延迟记录")
     telemetry.dataset.node = account.node
     telemetry.title = test.measured ? `${test.detail} · ${when(measured.test.checkedAt)} · 点击节点查看详情` : "点击节点可查看详情并进行测试"
     nodeCell.append(telemetry)
     const exits = exitsOf(account)
-    if (exits.length) {
-      // 徽标放进节点按钮里，不改变各种密度下的行布局
-      const live = exits.filter((exit) => exit.ip).length
-      const badge = el("span", "exit-count" + (live < exits.length ? " warn" : ""), `×${exits.length}`)
-      badge.title = `单 Key 多出口：${live}/${exits.length} 个出口在线`
-      node.querySelector(".node-name").after(badge)
-      node.title = `主出口 ${account.node} · 共 ${exits.length} 个出口（${live} 个在线）· 点击换绑主出口`
-    }
+    // 多出口入口：每个已绑定的账号行上都有，点开直接到出口数量设置
+    const whoName = account.alias || account.label
+    const live = exits.filter((exit) => exit.ip).length
+    const entry = btn("exit-entry" + (exits.length ? " multi" : "") + (exits.length && live < exits.length ? " warn" : ""), "", () => accountDialog(account, provider, { focusExits: true }))
+    entry.append(icon("stack", 12), el("span", "exit-entry-label", exits.length ? `${exits.length} 出口` : "多出口"))
+    entry.title = exits.length ? `单 Key 多出口：${live}/${exits.length} 个出口在线 · 点击调整数量` : "为这个账号设置多个出口（单 Key 多出口）"
+    entry.setAttribute("aria-label", exits.length ? `${whoName} 有 ${exits.length} 个出口，${live} 个在线，调整出口数量` : `为 ${whoName} 设置多出口`)
+    entry.dataset.focusKey = `exits-${provider.id}-${account.id}`
+    nodeLine.append(entry)
+    if (exits.length) node.title = `主出口 ${account.node} · 共 ${exits.length} 个出口（${live} 个在线）· 点击换绑主出口`
   } else {
     const assign = actionButton("分配出口", "bind", { provider: provider.id, account: account.id }, "button quiet accent small")
     assign.dataset.focusKey = `bind-${provider.id}-${account.id}`
@@ -780,7 +811,7 @@ function pickNodeDialog(target = {}) {
     draw(true)
   }, { wide: true, kind: "picker" })
 }
-function accountDialog(account, provider) {
+function accountDialog(account, provider, { focusExits = false } = {}) {
   openDialog((editor, close) => {
     editor.append(dialogHead("shield", "账号连接详情", close))
     const state = accountState(account), heading = el("div", "account-detail-heading")
@@ -812,25 +843,36 @@ function accountDialog(account, provider) {
     }
     if (account.port) {
       // 单 Key 多出口：同一个账号/Key 挂多个出口，magpie 侧仍只有一条代理。
-      const panel = el("div", "exit-controls"), count = el("select"), strategy = el("select")
-      const current = exits.length || 1
-      for (let n = 1; n <= MAX_EXITS; n++) { const option = el("option", "", n === 1 ? "1 个（单出口）" : `${n} 个`); option.value = String(n); count.append(option) }
-      count.value = String(current)
+      const panel = el("div", "exit-controls"), count = el("input"), strategy = el("select")
+      const current = exits.length || 1, limit = exitsLimit()
+      // 上限调低后已有的出口保留：允许停在当前数量或减少，不能再加
+      const ceiling = Math.max(limit, current)
+      count.type = "number"; count.min = 1; count.max = ceiling; count.step = 1; count.inputMode = "numeric"; count.value = String(current)
+      count.dataset.exitCount = ""
       for (const [value, label] of Object.entries(STRATEGY_LABELS)) { const option = el("option", "", label); option.value = value; strategy.append(option) }
       strategy.value = account.strategy && STRATEGY_LABELS[account.strategy] ? account.strategy : "round-robin"
       const apply = btn("button secondary small", "应用", () => {
         const next = Number(count.value)
+        if (!Number.isInteger(next) || next < 1 || next > ceiling) return
         if (send("exits", { provider: provider.id, account: account.id, count: next, ...(next > 1 ? { strategy: strategy.value } : {}) }, next > 1 ? `正在为 ${account.alias || account.label} 准备 ${next} 个出口` : `正在将 ${account.alias || account.label} 改回单出口`)) close()
       })
       apply.dataset.mutation = ""
       const sync = () => {
-        const next = Number(count.value)
-        strategy.disabled = next < 2
-        apply.disabled = next === current && (next < 2 || strategy.value === (account.strategy || "round-robin"))
+        const next = Number(count.value), valid = count.value.trim() !== "" && Number.isInteger(next) && next >= 1 && next <= ceiling
+        count.setAttribute("aria-invalid", String(!valid))
+        strategy.disabled = !valid || next < 2
+        // 轮询刷新会重新启用所有操作按钮，用 unavailable 标记保持「没有改动时不可点」
+        const idle = !valid || (next === current && (next < 2 || strategy.value === (account.strategy || "round-robin")))
+        apply.dataset.unavailable = String(idle)
+        apply.disabled = idle || !!pending
       }
-      count.onchange = strategy.onchange = sync; sync()
-      panel.append(field("出口数量", count), field("分流方式", strategy), apply)
-      editor.append(panel, el("p", "hint", "多出口会为这个账号多占用几个节点，每个出口都照常体检并在异常时自动更换。轮询按「新连接」切换出口，复用中的长连接不会中途换出口。"))
+      count.oninput = count.onchange = strategy.onchange = sync; sync()
+      count.onkeydown = (event) => { if (event.key === "Enter" && !apply.disabled) { event.preventDefault(); apply.click() } }
+      panel.append(field(`出口数量（1–${ceiling}）`, count), field("分流方式", strategy), apply)
+      const limitHint = el("p", "hint exit-limit-hint", `每个账号最多 ${limit} 个出口。`)
+      limitHint.append(btn("link-button", "调整上限", () => { close(); settingsDialog(getSnapshot() || {}, "health") }))
+      editor.append(el("h4", "exit-heading", "单 Key 多出口"), panel, limitHint, el("p", "hint", "多出口会为这个账号多占用几个节点，每个出口都照常体检并在异常时自动更换。轮询按「新连接」切换出口，复用中的长连接不会中途换出口。"))
+      if (focusExits) requestAnimationFrame(() => { panel.scrollIntoView({ block: "center" }); count.focus(); count.select() })
     }
     const actions = []
     if (account.port) actions.push(["解除绑定", "quiet danger", () => {
@@ -904,7 +946,8 @@ function settingsDialog(snapshot = getSnapshot() || {}, initialTab = "providers"
     const autoLabel = el("label", "checkbox-row"), auto = el("input"); auto.type = "checkbox"; auto.checked = config.autoAssignNew !== false
     autoLabel.append(auto, el("span", "", "发现新账号时自动分配出口")); scope.append(autoLabel)
     const health = group("health", "体检与备用", "定期检查出口连通性，异常时用不同 IP 的备用节点接替。"), healthFields = el("div", "settings-grid")
-    numbers(healthFields, "体检间隔", "checkIntervalMin", 2, 180, "分钟"); numbers(healthFields, "备用出口", "sparesCount", 2, 40, "个"); health.append(healthFields)
+    numbers(healthFields, "体检间隔", "checkIntervalMin", 2, 180, "分钟"); numbers(healthFields, "备用出口", "sparesCount", 2, 40, "个"); numbers(healthFields, "单账号出口上限", "maxExits", 2, 64, "个"); health.append(healthFields)
+    health.append(el("p", "hint", "出口上限决定一个账号或 API Key 最多能挂几个出口（单 Key 多出口）。每多一个出口多占用一个节点和一个本地端口；调低后已有的出口保留。"))
     const claim = group("claims", "自动领取计划", "以下时刻使用北京时间（UTC+8），支持跨午夜窗口。"), claimFields = el("div", "settings-grid")
     numbers(claimFields, "开始小时", "claimHour", 0, 23, "点"); numbers(claimFields, "开始分钟", "claimMinute", 0, 59, "分")
     numbers(claimFields, "持续时长", "claimWindowHours", 1, 24, "小时"); numbers(claimFields, "检查间隔", "claimIntervalMin", 2, 180, "分钟"); claim.append(claimFields)
@@ -980,7 +1023,7 @@ function tick() {
   if (connection.lastElementChild.textContent !== label) connection.lastElementChild.textContent = label
   connection.className = "connection " + (!at || stale ? "warn" : "ok")
   connection.title = at ? `上次更新：${when(at)}（北京时间）` : "后台服务尚未提供快照"
-  $("foot-mut").textContent = at ? `${age(at)}更新 · v${snapshot?.version?.plugin || "—"}` : "等待后台数据"
+  $("foot-mut").textContent = at ? `${age(at)}更新，版本 ${snapshot?.version?.plugin || "—"}` : "等待后台数据"
   const notice = $("stale-notice")
   const missing = !at && Date.now() - openedAt > 12000
   notice.hidden = !stale && !missing
@@ -1079,6 +1122,8 @@ document.addEventListener("keydown", (event) => {
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") clearTimeout(pollTimer); else refreshData() })
 document.querySelector('[data-act="check"]').prepend(icon("activity"))
 $("settings-button").prepend(icon("cog"))
+// Inside magpie the host's own bar already names the plugin.
+if (window.parent !== window) document.documentElement.classList.add("embedded")
 $("provider-nav-toggle").append(icon("panel"))
 function closeProviderMenu(focus = false) {
   if (!providerMenuOpen) return

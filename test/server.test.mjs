@@ -93,7 +93,7 @@ test("sidecar HTTP integration with isolated data, page and magpie directories",
     const binding = (await api(`/api/v1/binding?provider=atlas&account=${result.body.providers[0].accounts[0].id}`)).body
     assert.deepEqual([binding.exits, binding.front, binding.strategy, binding.proxy], [[], null, null, null])
     // 参数在进入任务队列之前校验，不会触发后台探测
-    for (const patch of [{ provider: "atlas" }, { provider: "atlas", account: "k", count: 0 }, { provider: "atlas", account: "k", count: 9 }, { provider: "atlas", account: "k", count: "2.5" }, { provider: "atlas", account: "k", count: 2, strategy: "random" }]) {
+    for (const patch of [{ provider: "atlas" }, { provider: "atlas", account: "k", count: 0 }, { provider: "atlas", account: "k", count: 9 }, { provider: "atlas", account: "k", count: 65 }, { provider: "atlas", account: "k", count: "2.5" }, { provider: "atlas", account: "k", count: 2, strategy: "random" }]) {
       for (const path of ["/api/exits", "/api/v1/exits"]) assert.equal((await api(path, patch)).status, 400)
     }
     assert.equal((await api("/api/v1/exits")).status, 405)

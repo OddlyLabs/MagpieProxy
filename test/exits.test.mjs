@@ -8,7 +8,8 @@ import { tmpdir } from "node:os"
 import { createHash } from "node:crypto"
 import { check, loadState, saveState, setExits, unbindAccount, swapPort, reviveFront, syncAll } from "../lib/egress.mjs"
 import { buildEgressConfig, validateEgressConfig, writeConfig, frontName, LB_STRATEGIES, LB_TEST_URL } from "../lib/mihomo.mjs"
-import { loadBindings, saveBindings, bindingPorts, portOwners, exitPortsOf, isMultiExit, proxyPortOf, proxyUrlOf, frontsOf, MAX_EXITS } from "../lib/bindings.mjs"
+import { loadBindings, saveBindings, bindingPorts, portOwners, exitPortsOf, isMultiExit, proxyPortOf, proxyUrlOf, frontsOf, MAX_EXITS, DEFAULT_MAX_EXITS, exitsLimit } from "../lib/bindings.mjs"
+import { applyConfigPatch } from "../lib/config.mjs"
 import { DEFAULT_CONFIG, saveConfig } from "../lib/store.mjs"
 import { providersView } from "../lib/snapshot.mjs"
 import { listProviders } from "../lib/providers.mjs"
@@ -296,4 +297,27 @@ test("a fresh install with nothing to check never starts or downloads the backen
   saveBindings({ bindings: { atlas: {}, zcode: { "a@example.com": { port: 17902 } } } })
   await check({ ...cfg, autoAssignNew: true }, ctx, { io: { ensureApi: async () => { started++; throw new Error("stop here") } } }).catch(() => {})
   assert.equal(started, 1)
+})
+
+test("the per-account exit limit follows the maxExits setting", async (t) => {
+  assert.deepEqual([exitsLimit({}), exitsLimit({ maxExits: 20 }), exitsLimit({ maxExits: 999 }), exitsLimit({ maxExits: 1 }), exitsLimit({ maxExits: "x" })], [DEFAULT_MAX_EXITS, 20, MAX_EXITS, DEFAULT_MAX_EXITS, DEFAULT_MAX_EXITS])
+  assert.equal(applyConfigPatch(DEFAULT_CONFIG, { maxExits: 32 }).maxExits, 32)
+  for (const maxExits of [1, 65, 2.5, ""]) assert.throws(() => applyConfigPatch(DEFAULT_CONFIG, { maxExits }))
+  const { cfg, ctx, io, calls } = fixture(t)
+  const refused = await setExits({ ...cfg, maxExits: 2 }, ctx, "atlas", KEY_ID, 3, { io })
+  assert.equal(refused.ok, false); assert.match(refused.why, /1–2/); assert.equal(calls.pool.length, 0)
+  const grown = await setExits({ ...cfg, maxExits: 12 }, ctx, "atlas", KEY_ID, 3, { io })
+  assert.equal(grown.ok, true); assert.equal(exitPortsOf(loadBindings().bindings.atlas[KEY_ID]).length, 3)
+  // 上限调低后，已有的出口保留；只能减少，不能再加
+  assert.equal((await setExits({ ...cfg, maxExits: 2 }, ctx, "atlas", KEY_ID, 4, { io })).ok, false)
+  const reduced = await setExits({ ...cfg, maxExits: 2 }, ctx, "atlas", KEY_ID, 2, { io })
+  assert.equal(reduced.ok, true); assert.equal(exitPortsOf(loadBindings().bindings.atlas[KEY_ID]).length, 2)
+})
+
+test("exit groups hold their own node and the spares, not every node in use", () => {
+  const assignments = Object.fromEntries(["A", "B", "D", "E"].map((node, i) => [17901 + i, { node }]))
+  const config = buildEgressConfig({ proxies, assignments, spares: [{ node: "C" }], sparePortBase: 17931, controller: "127.0.0.1:29093", withGroups: true, fronts: [] })
+  assert.deepEqual(validateEgressConfig(config), [])
+  assert.deepEqual(config["proxy-groups"].find((g) => g.name === "eg-17902").proxies, ["B", "C"])
+  assert.deepEqual(config["proxy-groups"].find((g) => g.name === "spare-17931").proxies.slice().sort(), ["A", "B", "C", "D", "E"])
 })

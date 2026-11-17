@@ -1,13 +1,13 @@
 // Local sidecar: task scheduling, stable HTTP API and sandboxed-page snapshots.
 import { createServer } from "node:http"
 import { randomBytes } from "node:crypto"
-import { mkdirSync, appendFileSync, readFileSync, existsSync, unlinkSync } from "node:fs"
+import { mkdirSync, appendFileSync, readFileSync, existsSync, unlinkSync, statSync, renameSync, rmSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { setTimeout as delay } from "node:timers/promises"
 import { loadConfig, saveConfig, loadSnapshot, writeSnapshot, loadRecords, clearRecords, dataDir, resolveBaseDir } from "./lib/store.mjs"
 import { loadState, syncAll } from "./lib/egress.mjs"
-import { loadBindings, migrateBindings, bindingOf, exitPortsOf, isMultiExit, proxyUrlOf, MAX_EXITS } from "./lib/bindings.mjs"
+import { loadBindings, migrateBindings, bindingOf, exitPortsOf, isMultiExit, proxyUrlOf, MAX_EXITS, exitsLimit } from "./lib/bindings.mjs"
 import { listProviders, managedIds } from "./lib/providers.mjs"
 import { authAccounts, magpieDir } from "./lib/accounts.mjs"
 import { claimRound, inClaimWindow, nextWindowAt } from "./lib/claims.mjs"
@@ -37,10 +37,17 @@ const SERVICE = "magpie-zcode-egress"
 const uiToken = randomBytes(32).toString("hex")
 let releaseSeat = null
 const cfg0 = () => loadConfig()
+let slogCount = 0
 export const slog = (message) => {
   const line = `[${new Date().toISOString().replace("T", " ").slice(0, 19)}] ${message}`
   console.log(line)
-  try { mkdirSync(dataDir(), { recursive: true }); appendFileSync(join(dataDir(), "sidecar.log"), line + "\n", { mode: 0o600 }) } catch {}
+  try {
+    const file = join(dataDir(), "sidecar.log")
+    mkdirSync(dataDir(), { recursive: true })
+    // 日志超过 5 MB 时留一份 .1 重新开始，避免无限增长。
+    if (++slogCount % 200 === 1) { try { if (statSync(file).size > 5_000_000) renameSync(file, file + ".1") } catch {} }
+    appendFileSync(file, line + "\n", { mode: 0o600 })
+  } catch {}
 }
 
 // Never signal an arbitrary PID from a stale pidfile. Identify the service over HTTP.
@@ -116,7 +123,9 @@ const noteRequestId = (patch, result) => {
 }
 
 // Serialize snapshot writes: a slower, older projection cannot overwrite a newer one.
-let feedChain = Promise.resolve()
+// The latest snapshot stays in memory for /api/status; disk copies are refreshed only
+// when the content changes, or every 30 s so readers of the files still see it is alive.
+let feedChain = Promise.resolve(), memorySnapshot = null, writtenBody = "", writtenAt = 0, tickFeeding = false
 function feedPage() {
   feedChain = feedChain.catch(() => {}).then(async () => {
     try {
@@ -158,11 +167,16 @@ function feedPage() {
         check: { lastAt: lastCheckAt || null, lastResult: lastCheckResult, intervalMin: cfg.checkIntervalMin },
         providers, records: records.slice(-100).reverse(), lastPageSeen,
       }
-      writeSnapshot(snapshot)
+      memorySnapshot = snapshot
       lastSnapshot = Date.now()
-      // Compatibility for the optional Settings panel and old sandbox pages.
-      // A read-only package must never prevent the service UI from updating.
-      try { writeFileAtomic(join(pageDir, "data.js"), `window.__ZE__ = ${JSON.stringify({ port: livePort, updated: snapshot.updated, snapshot })};\n`, { mode: 0o600 }) } catch {}
+      const body = JSON.stringify({ ...snapshot, updated: 0, lastPageSeen: 0 })
+      if (body !== writtenBody || lastSnapshot - writtenAt >= 30_000) {
+        writeSnapshot(snapshot)
+        writtenBody = body; writtenAt = lastSnapshot
+        // Compatibility for the optional Settings panel and old sandbox pages.
+        // A read-only package must never prevent the service UI from updating.
+        try { writeFileAtomic(join(pageDir, "data.js"), `window.__ZE__ = ${JSON.stringify({ port: livePort, updated: snapshot.updated, snapshot })};\n`, { mode: 0o600 }) } catch {}
+      }
       return snapshot
     } catch (error) { slog("feedPage: " + String(error.message)); return null }
   })
@@ -171,11 +185,25 @@ function feedPage() {
 
 // flock also protects against the legacy cron job. Bound captured output and kill
 // the entire process group on timeout so an orphan cannot retain the lock.
-const flockRun = (cfg, args, timeoutMs = 30 * 60_000) => {
+const flockRun = async (cfg, args, timeoutMs = 30 * 60_000) => {
   const legacy = process.platform === "linux" && resolveBaseDir(cfg) === "/opt/zcode-egress"
   const command = legacy ? "flock" : process.execPath
   const argv = legacy ? ["-n", "-E", "75", cfg.cronLock || "/tmp/zcode-egress.lock", process.execPath] : []
-  return runProcess(command, [...argv, join(here, "egress-cli.mjs"), ...args], { timeoutMs, env: { ...process.env, ZCODE_EGRESS_CONFIG: JSON.stringify(cfg) } })
+  // Windows 上超时只结束任务进程本身：它拉起的出口内核是常驻进程，不能跟着被结束。
+  const result = await runProcess(command, [...argv, join(here, "egress-cli.mjs"), ...args], { timeoutMs, env: { ...process.env, ZCODE_EGRESS_CONFIG: JSON.stringify(cliConfig(cfg)) }, killTree: process.platform !== "win32" })
+  // 被强制结束的任务来不及释放任务锁。锁的主人确实是刚结束的那个进程时由这里清掉，
+  // 否则进程号被系统复用后，之后的每个任务都会被当成「已有任务在执行」。
+  if (result.timedOut && !legacy && result.pid) {
+    const lock = join(dataDir(), "egress.lock")
+    try { if (JSON.parse(readFileSync(join(lock, "owner.json"), "utf8")).pid === result.pid) rmSync(lock, { recursive: true, force: true }) } catch {}
+  }
+  return result
+}
+// 子进程自己会读 config.json；大块内容（手动节点池、请求回执）不放进环境变量，
+// 否则节点池一大就超过系统对单个环境变量的长度限制，任务根本起不来。
+function cliConfig(cfg) {
+  const { poolText, requestResults, lastRequestResult, ...rest } = cfg
+  return rest
 }
 const lockBusy = (result) => result.code === 75
 const cliResult = (result, message) => ({
@@ -245,7 +273,10 @@ const actions = {
   async exits(patch) {
     const { provider, account } = identity(patch)
     const count = Number(patch.count)
-    if (!Number.isInteger(count) || count < 1 || count > MAX_EXITS) throw new HttpError(400, `出口数量需要是 1–${MAX_EXITS} 的整数`)
+    const limit = exitsLimit(cfg0())
+    if (!Number.isInteger(count) || count < 1 || count > MAX_EXITS) throw new HttpError(400, `出口数量需要是 1–${limit} 的整数`)
+    // 上限调低后已有的出口保留：超过上限时只允许减少，不允许再加。
+    if (count > limit && count > exitPortsOf(bindingOf(loadBindings(), provider, account)).length) throw new HttpError(400, `出口数量需要是 1–${limit} 的整数（上限可在设置的「体检与备用」中调整）`)
     if (patch.strategy !== undefined && !LB_STRATEGIES.includes(patch.strategy)) throw new HttpError(400, `分流策略只能是 ${LB_STRATEGIES.join(" / ")}`)
     const result = cliResult(await flockRun(cfg0(), ["exits", provider, account, String(count), ...(patch.strategy ? ["--strategy", patch.strategy] : [])], 60 * 60_000), count > 1 ? `已设为 ${count} 个出口` : "已改回单出口")
     try {
@@ -345,7 +376,7 @@ const server = createServer(async (req, res) => {
     if (serveDashboard(req, res, path, uiToken)) return
     if (req.method === "GET" && path === "/api/status") return sendJson(res, 200, {
       ok: true, service: SERVICE, gen: GEN, pid: process.pid, startedAt, port: livePort, dataDir: dataDir(), magpieDir: magpieDir(),
-      snapshot: loadSnapshot(), lastCheckAt, lastClaimAt, running: !!tasks.active, task: tasks.active,
+      snapshot: memorySnapshot ?? loadSnapshot(), lastCheckAt, lastClaimAt, running: !!tasks.active, task: tasks.active,
     })
     if (path === "/api/ui-preferences" && ["GET", "POST"].includes(req.method)) {
       const file = join(dataDir(), "ui-preferences.json")
@@ -413,7 +444,11 @@ const tick = async () => {
     lastClaimTick = now
     void executeAction("claims").catch((error) => slog(error.message))
   }
-  if (now - lastSnapshot >= (panelActive() ? 5000 : 60_000)) await feedPage()
+  // 上一次还没写完就不再排队，慢磁盘上不会越积越多。
+  if (!tickFeeding && now - lastSnapshot >= (panelActive() ? 5000 : 60_000)) {
+    tickFeeding = true
+    try { await feedPage() } finally { tickFeeding = false }
+  }
 }
 async function versionRefresh() {
   const cfg = cfg0()
