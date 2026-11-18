@@ -1,6 +1,6 @@
 {
   "name": "magpie-zcode-egress",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "MagpieProxy（出口管家）：magpie 插件，通过官方插件页面或本机浏览器，为供应商账号和 API Key 管理独立代理出口、单 Key 多出口、节点来源、健康检查及 ZCode 自动领取。支持 Windows、macOS 和 Linux。",
   "homepage": "https://github.com/OddlyLabs/MagpieProxy#readme",
   "repository": {

@@ -4,7 +4,7 @@
 
 ## 现在的状态
 
-- 版本 1.1.0，项目名 MagpieProxy，源码在 <https://github.com/OddlyLabs/MagpieProxy>，默认分支 `main`，标签 `v1.1.0`。
+- 版本 1.2.0，项目名 MagpieProxy，源码在 <https://github.com/OddlyLabs/MagpieProxy>，默认分支 `main`，标签 `v1.2.0`。
 - 仓库没有设置任何 topic。**不要加 `magpie-plugin`**（原因见 CLAUDE.md）。
 - 安装方式三种：`magpie plugin add github:OddlyLabs/MagpieProxy`（README 的 Add to magpie）、Windows 安装包（`Install.cmd`）、macOS / Linux 目录安装（`install.sh`）。
 - magpie 官方的 Add to magpie 导入链接只能添加模型供应商，不能安装插件。所以 README 里的官方徽章指向 `#add-to-magpie` 一节，由一条命令完成添加。官方以后支持插件链接时，把徽章换成真正的链接。
@@ -12,7 +12,7 @@
 ## 最近完成的工作
 
 1. 单 Key 多出口（1.1.0 主功能）及可靠性改进，见 [CHANGELOG.md](CHANGELOG.md)。
-   1.1.0 之后（CHANGELOG 的「未发布」）：出口上限可设置（`maxExits`，默认 8，最高 64）、账号行上的「多出口」入口、一批性能和健壮性改进、工作台界面改版（单行标题栏、出口健康条，README 截图已更新）。**还没有改版本号、打标签和发 Release。**
+   1.2.0：出口上限可设置（`maxExits`，默认 8，最高 64）、账号行上的「多出口」入口、一批性能和健壮性改进、工作台界面改版（单行标题栏、出口健康条，README 截图已更新）。从这一版起，推送标签后由 GitHub Actions 自动打包并发布 Release（`.github/workflows/release.yml`）。
 2. 改名 MagpieProxy：README、QUICKSTART、发布文件名、`package.json` 的仓库地址和展示名。包名、数据目录、环境变量没有改。
 3. `doctor` 能识别从 git 或 npm 添加的副本（`lib/platform.mjs` 的 `findRegistration`）。
 4. 发布包里脚本的可执行位按文件内容（`#!` 开头）确定；git 里三个脚本的模式是 100755。
@@ -71,5 +71,7 @@ Windows 的 Git Bash 里把 `$sb` 换成 `cygpath -m "$sb"` 的结果。真实�
 
 1. 改 `package.json` 的版本号，写 CHANGELOG，更新 README 和 QUICKSTART 里的文件名。
 2. `npm run check`、`npm test`、`npm run test:ui`。
-3. 提交并推送 `main`，打标签 `v<版本>`。
-4. `npm run release -- <输出目录>`，把两个 ZIP、`.tgz` 和 `SHA256SUMS.txt` 上传到 GitHub Release，说明用生成的 `RELEASE.md`。
+3. 提交并推送 `main`，等 CI 通过。
+4. 打标签并推送：`git tag v<版本> && git push origin v<版本>`。`.github/workflows/release.yml` 会核对标签与 `package.json` 的版本号，运行检查和测试，执行 `npm run release`，再把两个 ZIP、`.tgz`、`RELEASE.md` 和 `SHA256SUMS.txt` 发布到 GitHub Release。说明由 `scripts/release-notes.mjs` 生成：`RELEASE.md` 加上 CHANGELOG 里这一版的小节，所以 CHANGELOG 必须有以 `# <版本>` 开头的标题。
+
+标签对应的 Release 已经存在时，工作流会覆盖其中的文件和说明。需要在本机打包时仍然可以运行 `npm run release -- <输出目录>`。

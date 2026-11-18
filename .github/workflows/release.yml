@@ -1,0 +1,50 @@
+name: Release
+# Pushing a tag v<x.y.z> checks the code, builds the archives and publishes
+# them as a GitHub Release. The tag must match the version in package.json.
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Check that the tag matches package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - name: Build the release files
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          npm run release -- "$RUNNER_TEMP/release"
+      - name: Write the release notes
+        run: node scripts/release-notes.mjs "$RUNNER_TEMP/release/RELEASE.md" > "$RUNNER_TEMP/notes.md"
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$RUNNER_TEMP/release"
+          sha256sum -c SHA256SUMS.txt
+          files=(MagpieProxy-"$VERSION".zip MagpieProxy-"$VERSION"-source.zip magpie-zcode-egress-"$VERSION".tgz RELEASE.md SHA256SUMS.txt)
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$GITHUB_REF_NAME" --title "MagpieProxy $VERSION" --notes-file "$RUNNER_TEMP/notes.md" --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" --title "MagpieProxy $VERSION" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag --repo "$GITHUB_REPOSITORY"
+          fi
