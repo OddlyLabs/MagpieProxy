@@ -1,10 +1,10 @@
 # 接手说明
 
-最后更新：2026-11-17。约定和命令见 [CLAUDE.md](CLAUDE.md)，这里只记录进展。
+最后更新：2026-11-19。约定和命令见 [CLAUDE.md](CLAUDE.md)，这里只记录进展。
 
 ## 现在的状态
 
-- 版本 1.2.0，项目名 MagpieProxy，源码在 <https://github.com/OddlyLabs/MagpieProxy>，默认分支 `main`，标签 `v1.2.0`。
+- 版本 1.2.1，项目名 MagpieProxy，源码在 <https://github.com/OddlyLabs/MagpieProxy>，默认分支 `main`，标签 `v1.2.1`。
 - 仓库没有设置任何 topic。**不要加 `magpie-plugin`**（原因见 CLAUDE.md）。
 - 安装方式三种：`magpie plugin add github:OddlyLabs/MagpieProxy`（README 的 Add to magpie）、Windows 安装包（`Install.cmd`）、macOS / Linux 目录安装（`install.sh`）。
 - magpie 官方的 Add to magpie 导入链接只能添加模型供应商，不能安装插件。所以 README 里的官方徽章指向 `#add-to-magpie` 一节，由一条命令完成添加。官方以后支持插件链接时，把徽章换成真正的链接。
@@ -13,6 +13,7 @@
 
 1. 单 Key 多出口（1.1.0 主功能）及可靠性改进，见 [CHANGELOG.md](CHANGELOG.md)。
    1.2.0：出口上限可设置（`maxExits`，默认 8，最高 64）、账号行上的「多出口」入口、一批性能和健壮性改进、工作台界面改版（单行标题栏、出口健康条，README 截图已更新）。从这一版起，推送标签后由 GitHub Actions 自动打包并发布 Release（`.github/workflows/release.yml`）。
+   1.2.1：修复自动领取全部报「浏览器响应超时：Page.navigate」。`lib/captcha.mjs` 的 `solveOnPage` 不再等 `Page.navigate` 的应答（Chrome 156 走代理时这条应答可能一直不回），改为轮询 `location`。**不要改回 `await send("Page.navigate")`，也不要靠调大超时解决。** 用假 WebSocket 的测试在 `test/captcha.test.mjs`。
 2. 改名 MagpieProxy：README、QUICKSTART、发布文件名、`package.json` 的仓库地址和展示名。包名、数据目录、环境变量没有改。
 3. `doctor` 能识别从 git 或 npm 添加的副本（`lib/platform.mjs` 的 `findRegistration`）。
 4. 发布包里脚本的可执行位按文件内容（`#!` 开头）确定；git 里三个脚本的模式是 100755。
@@ -22,8 +23,8 @@
 
 | 项目 | 结果 |
 | --- | --- |
-| `npm run check` | 73 / 73，Windows 11，Node.js 24.18.0。 |
-| `npm test` | 132 / 132。 |
+| `npm run check` | 75 / 75，Windows 11，Node.js 24.18.0。 |
+| `npm test` | 138 / 138。 |
 | `npm run test:ui`（Chromium） | 49 / 49，使用本机 Chrome。 |
 | 按目录添加，magpie v0.1.4324，隔离环境 | 通过：页面、设置面板、7 个工具都列出，没有加载错误。 |
 | 从 GitHub 添加，隔离环境 | 通过，见 [docs/VALIDATION.md](docs/VALIDATION.md)。 |

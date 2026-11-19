@@ -1,4 +1,4 @@
-# MagpieProxy（出口管家）1.2.0
+# MagpieProxy（出口管家）1.2.1
 
 此版本使用 magpie 官方插件接口，不需要修改或替换 magpie 程序。只复制目录不会把插件注册到 magpie；下面的安装方式选一种即可，运行数据通用。
 
@@ -12,7 +12,7 @@ magpie plugin add github:OddlyLabs/MagpieProxy
 
 ## Windows 安装包
 
-1. 从 [Releases](https://github.com/OddlyLabs/MagpieProxy/releases/latest) 下载 `MagpieProxy-1.2.0.zip` 并完整解压，不要直接在压缩包里运行脚本。
+1. 从 [Releases](https://github.com/OddlyLabs/MagpieProxy/releases/latest) 下载 `MagpieProxy-1.2.1.zip` 并完整解压，不要直接在压缩包里运行脚本。
 2. 双击 **Install.cmd**。自动查找 magpie；找不到时，选择你平时运行的 magpie EXE。
 3. 安装成功后自动打开浏览器工作台。magpie 已打开时，刷新窗口。
 

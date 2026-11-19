@@ -32,7 +32,7 @@ magpie plugin add github:OddlyLabs/MagpieProxy
 | 操作 | 做法 |
 | --- | --- |
 | 更新 | 仓库有新提交时，magpie 的插件页会提示更新；也可以运行 `magpie plugin update`。 |
-| 停在某个版本 | 添加时带上版本标签：`magpie plugin add github:OddlyLabs/MagpieProxy#v1.2.0`。 |
+| 停在某个版本 | 添加时带上版本标签：`magpie plugin add github:OddlyLabs/MagpieProxy#v1.2.1`。 |
 | 停用 / 启用 | `magpie plugin off magpie-zcode-egress`、`magpie plugin on magpie-zcode-egress`。 |
 | 移除 | `magpie plugin rm magpie-zcode-egress`。 |
 
@@ -43,7 +43,7 @@ magpie plugin add github:OddlyLabs/MagpieProxy
 
 ## Windows 安装包
 
-想要桌面快捷方式和一键诊断，或者不方便使用命令行时，可以改用安装包。从 [Releases](https://github.com/OddlyLabs/MagpieProxy/releases/latest) 下载 `MagpieProxy-1.2.0.zip`，完整解压后双击目录中的 **Install.cmd**。只复制目录不会完成插件注册。
+想要桌面快捷方式和一键诊断，或者不方便使用命令行时，可以改用安装包。从 [Releases](https://github.com/OddlyLabs/MagpieProxy/releases/latest) 下载 `MagpieProxy-1.2.1.zip`，完整解压后双击目录中的 **Install.cmd**。只复制目录不会完成插件注册。
 
 安装器会找到正在使用的 magpie；找不到时会让你选择 EXE。随后将插件复制到该 magpie 数据目录中的 `local-plugins/magpie-zcode-egress`，完成注册、启用、后台启动和检查，最后打开浏览器面板。不需要管理员权限，优先复用 magpie 自带的 Bun，无需另装 Node.js。
 
